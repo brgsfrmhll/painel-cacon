@@ -1963,8 +1963,9 @@ if __name__ == '__main__':
     print("   - assets/logo.jpg (logo da empresa)")
     print("="*50 + "\n")
     
-    app.run_server(
+    app.run(
         debug=True,
         host='0.0.0.0',
         port=8050
+
     )
