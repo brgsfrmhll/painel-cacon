@@ -1929,7 +1929,7 @@ app.index_string = '''
 </html>
 '''
 
-# ==================== EXECUÇÃO ====================
+# ==================== EXECUÇÃO PARA NGINX ====================
 
 if __name__ == '__main__':
     print("🔄 Verificando dados antigos...")
@@ -1940,12 +1940,14 @@ if __name__ == '__main__':
     print("📁 ARQUIVOS NECESSÁRIOS:")
     print("   - assets/som.mp3 (arquivo de som para chamadas)")
     print("   - assets/logo.png (logo da empresa)")
+    print("🌐 RODANDO ATRÁS DO NGINX")
     print("="*50 + "\n")
     
-    # ✅ CONFIGURAÇÃO PARA LIGHTSAIL
+    # ✅ CONFIGURAÇÃO PARA NGINX (apenas localhost)
     app.run(
-        debug=False,          # ✅ Desabilitar debug em produção
-        host='0.0.0.0',       # ✅ Aceitar conexões de qualquer IP
-        port=8053,            # ✅ Porta especificada
-        threaded=True         # ✅ Suporte a múltiplas conexões
+        debug=False,
+        host='127.0.0.1',     # ✅ Apenas localhost (Nginx fará proxy)
+        port=8053,            # ✅ Porta interna
+        threaded=True,
+        use_reloader=False
     )
