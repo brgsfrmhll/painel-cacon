@@ -4,9 +4,31 @@ import dash_bootstrap_components as dbc
 from datetime import datetime
 import json
 import os
+import sys
 from typing import List, Dict
 import uuid
 import math
+import logging
+
+# ==================== CONFIGURAÇÕES DE PRODUÇÃO ====================
+
+# Configurações para ambiente de produção
+if not os.environ.get('DASH_DEBUG'):
+    # Desabilitar logs desnecessários
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)
+
+# Configuração de diretórios
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+
+# Criar diretórios se não existirem
+for directory in [DATA_DIR, ASSETS_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        print(f"📁 Criado diretório: {directory}")
+
+# ==================== INICIALIZAÇÃO DO APP ====================
 
 # Inicialização do app com tema Bootstrap
 app = dash.Dash(
@@ -17,13 +39,17 @@ app = dash.Dash(
 
 app.title = "Gerenciamento de Fila"
 
-# Configurações
-DATA_FILE = "data/fila_data.json"
+# Configurar app para produção
+app.server.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fila-management-2024-secret-key')
+
+# ==================== CONFIGURAÇÕES ====================
+
+DATA_FILE = os.path.join(DATA_DIR, "fila_data.json")
 REFRESH_INTERVAL = 3000  # 3 segundos
-CAROUSEL_INTERVAL = 10000  # 8 segundos
+CAROUSEL_INTERVAL = 10000  # 10 segundos
 MAX_FILAS_POR_TELA = 3
-MODAL_DURATION = 8000  # 10 segundos
-SENHA_ADMIN = "6105/*"  # Senha para acesso ao admin
+MODAL_DURATION = 8000  # 8 segundos
+SENHA_ADMIN = "6105/*"  # ⚠️ ALTERE ESTA SENHA EM PRODUÇÃO
 
 # Classificações com cores e prioridades BASEADAS EM IDADE
 CLASSIFICACOES = {
@@ -223,7 +249,6 @@ MAPEAMENTO_CLASSIFICACOES_ANTIGAS = {
     "normal": "normal"
 }
 
-
 def migrar_classificacao_antiga(classificacao: str) -> str:
     """Converte classificação antiga para nova"""
     if classificacao in CLASSIFICACOES:
@@ -235,7 +260,6 @@ def migrar_classificacao_antiga(classificacao: str) -> str:
     
     # Se não reconhecer, retorna normal
     return "normal"
-
 
 def migrar_dados_antigos():
     """Migra todos os pacientes com classificações antigas"""
@@ -263,7 +287,6 @@ def migrar_dados_antigos():
     
     return dados
 
-
 def obter_classificacao_segura(paciente: Dict) -> Dict:
     """Obtém classificação de forma segura, migrando se necessário"""
     classificacao = paciente.get("classificacao", "normal")
@@ -274,7 +297,6 @@ def obter_classificacao_segura(paciente: Dict) -> Dict:
     
     return CLASSIFICACOES[classificacao]
 
-
 def calcular_idade(data_nascimento: str) -> int:
     """Calcula idade a partir da data de nascimento"""
     try:
@@ -284,7 +306,6 @@ def calcular_idade(data_nascimento: str) -> int:
         return idade
     except:
         return 0
-
 
 def sugerir_classificacao(data_nascimento: str) -> str:
     """Sugere classificação baseada na idade"""
@@ -297,7 +318,6 @@ def sugerir_classificacao(data_nascimento: str) -> str:
     else:
         return "normal"
 
-
 def formatar_hora(timestamp_iso: str) -> str:
     """Formata timestamp ISO para hora HH:MM"""
     try:
@@ -306,20 +326,16 @@ def formatar_hora(timestamp_iso: str) -> str:
     except:
         return ""
 
-
 # ==================== FUNÇÕES DE DADOS ====================
 
 def carregar_dados():
     """Carrega dados do arquivo JSON"""
-    if not os.path.exists("data"):
-        os.makedirs("data")
-    
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
-        except:
-            pass
+        except Exception as e:
+            print(f"❌ Erro ao carregar dados: {e}")
     
     return {
         "filas": {
@@ -335,12 +351,13 @@ def carregar_dados():
         "ultimo_chamado": None
     }
 
-
 def salvar_dados(dados):
     """Salva dados no arquivo JSON"""
-    with open(DATA_FILE, 'w', encoding='utf-8') as f:
-        json.dump(dados, f, ensure_ascii=False, indent=2)
-
+    try:
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            json.dump(dados, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"❌ Erro ao salvar dados: {e}")
 
 def adicionar_paciente(fila_id: str, nome: str, data_nascimento: str, classificacao: str):
     """Adiciona um paciente à fila"""
@@ -363,7 +380,6 @@ def adicionar_paciente(fila_id: str, nome: str, data_nascimento: str, classifica
     salvar_dados(dados)
     return paciente_id
 
-
 def obter_pacientes_por_status(fila_id: str, status: str) -> List[Dict]:
     """Retorna pacientes da fila filtrados por status"""
     dados = carregar_dados()
@@ -382,7 +398,6 @@ def obter_pacientes_por_status(fila_id: str, status: str) -> List[Dict]:
     
     return pacientes
 
-
 # ==================== LAYOUT PRINCIPAL ====================
 
 app.layout = html.Div([
@@ -391,7 +406,6 @@ app.layout = html.Div([
     dcc.Store(id='store-tema-selecionado', data='bootstrap', storage_type='local'),
     html.Div(id='page-content')
 ])
-
 
 # ==================== TELA DE LOGIN ====================
 
@@ -445,7 +459,6 @@ def layout_login():
         ], fluid=True, className="bg-light")
     ])
 
-
 @callback(
     Output("store-autenticado", "data"),
     Output("feedback-login", "children"),
@@ -463,7 +476,6 @@ def fazer_login(n_clicks, senha):
         return True, dbc.Alert("✅ Login realizado com sucesso!", color="success"), "/admin"
     else:
         return False, dbc.Alert("❌ Senha incorreta!", color="danger"), dash.no_update
-
 
 # ==================== TELA PÚBLICA (TV) ====================
 
@@ -605,7 +617,6 @@ def layout_publico():
         
     ], id="container-publico", style={"minHeight": "100vh"})
 
-
 # ==================== CALLBACK PARA HABILITAR SOM (PYTHON) ====================
 
 @callback(
@@ -617,7 +628,6 @@ def layout_publico():
 def habilitar_som_python(n_clicks):
     """Marca som como habilitado e esconde botão"""
     return True, {"display": "none"}
-
 
 # ==================== CALLBACK CLIENTSIDE PARA DESBLOQUEAR ÁUDIO ====================
 
@@ -657,7 +667,6 @@ app.clientside_callback(
     Input("btn-habilitar-som", "n_clicks"),
     prevent_initial_call=True
 )
-
 
 # ==================== CALLBACKS DO MODAL ====================
 
@@ -727,7 +736,6 @@ def controlar_modal_chamada(n_refresh, n_modal_close, is_open, ultimo_chamado_an
         return False, "", True, 0, ultimo_chamado_anterior, tocar_som_count
     
     return is_open, dash.no_update, dash.no_update, dash.no_update, ultimo_chamado_anterior, tocar_som_count
-
 
 # Callback clientside para tocar o som APENAS se habilitado E se o contador MUDOU
 app.clientside_callback(
@@ -804,7 +812,6 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-
 # ==================== CALLBACKS TELA PÚBLICA ====================
 
 @callback(
@@ -822,7 +829,6 @@ def rotacionar_carrossel(n, current_page):
     total_pages = math.ceil(len(filas_ativas) / MAX_FILAS_POR_TELA)
     next_page = (current_page + 1) % total_pages
     return next_page
-
 
 @callback(
     Output("filas-container", "children"),
@@ -880,20 +886,20 @@ def atualizar_filas_publico(n, current_page):
                 ], className="bg-info text-white"),
                 
                 dbc.CardBody([
-                    # AGUARDANDO (máximo 20)
+                    # AGUARDANDO (máximo 12)
                     html.Div([
                         html.H5([
                             html.I(className="fas fa-hourglass-half me-2"),
                             f"Aguardando ({total_aguardando})"
                         ], className="text-warning mb-2"),
                         
-                        # Alerta se há mais que 20
+                        # Alerta se há mais que 12
                         html.Div([
                             dbc.Alert(
-                                f"⚠️ Mostrando 20 de {total_aguardando} pacientes",
+                                f"⚠️ Mostrando 12 de {total_aguardando} pacientes",
                                 color="warning",
                                 className="py-2 mb-2 small"
-                            ) if total_aguardando > 20 else None,
+                            ) if total_aguardando > 12 else None,
                             
                             html.Div([
                                 criar_linha_paciente_publico(p, idx + 1) 
@@ -960,7 +966,6 @@ def atualizar_filas_publico(n, current_page):
         className="row fade-in"
     ), indicators
 
-
 def criar_linha_paciente_publico(paciente: Dict, posicao=None, status_tipo=None):
     """Cria linha de paciente para tela pública COM HORÁRIOS"""
     classif = obter_classificacao_segura(paciente)
@@ -1009,7 +1014,6 @@ def criar_linha_paciente_publico(paciente: Dict, posicao=None, status_tipo=None)
             html.Small(dn_texto, className="text-muted", style={"fontSize": "0.75rem"})
         ], className="d-flex align-items-center flex-wrap")
     ], className="py-2 border-bottom" if status_tipo != "atendido" else "py-1")
-
 
 @callback(
     Output("clock", "children"),
@@ -1076,7 +1080,6 @@ def layout_admin():
         ], fluid=True)
     ])
 
-
 @callback(
     Output("store-autenticado", "data", allow_duplicate=True),
     Output("url", "pathname", allow_duplicate=True),
@@ -1086,7 +1089,6 @@ def layout_admin():
 def fazer_logout(n_clicks):
     """Desautentica o usuário"""
     return False, "/login"
-
 
 # ==================== CALLBACK PARA GERENCIAR TEMA (ADMIN + TELA PÚBLICA) ====================
 
@@ -1098,7 +1100,6 @@ def fazer_logout(n_clicks):
 def salvar_tema_selecionado(tema_id):
     """Salva tema selecionado no admin"""
     return tema_id or "bootstrap"
-
 
 # Callback clientside para aplicar tema dinamicamente EM TODAS AS PÁGINAS
 app.clientside_callback(
@@ -1154,7 +1155,6 @@ app.clientside_callback(
     Input("store-tema-selecionado", "data"),
     prevent_initial_call=True
 )
-
 
 # ==================== CALLBACK PARA CARREGAR TEMA SALVO NA TELA PÚBLICA ====================
 
@@ -1219,7 +1219,6 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-
 # ==================== CALLBACK PARA CARREGAR TEMA SALVO NO ADMIN ====================
 
 # Callback clientside para carregar tema salvo quando entrar no admin
@@ -1254,7 +1253,6 @@ app.clientside_callback(
     prevent_initial_call=True
 )
 
-
 @callback(
     Output("tab-content", "children"),
     Input("tabs", "active_tab")
@@ -1266,7 +1264,6 @@ def render_tab_content(active_tab):
         return render_adicionar_paciente()
     elif active_tab == "tab-chamar":
         return render_chamar_pacientes()
-
 
 # ==================== TAB: GERENCIAR FILAS ====================
 
@@ -1298,7 +1295,6 @@ def render_gerenciar_filas():
         ])
     ])
 
-
 @callback(
     Output("feedback-criar-fila", "children"),
     Output("input-nome-fila", "value"),
@@ -1328,7 +1324,6 @@ def criar_fila(n_clicks, nome):
         "",
         {"timestamp": datetime.now().isoformat()}
     )
-
 
 @callback(
     Output("lista-filas", "children"),
@@ -1410,7 +1405,6 @@ def atualizar_lista_filas(update_data, toggle_clicks, delete_clicks, active_tab)
     
     return dbc.Row(filas_cards)
 
-
 # ==================== TAB: ADICIONAR PACIENTE ====================
 
 def render_adicionar_paciente():
@@ -1480,7 +1474,6 @@ def render_adicionar_paciente():
         ], md=12, lg=6, className="mx-auto")
     ])
 
-
 @callback(
     Output("alerta-sugestao-prioridade", "children"),
     Output("radio-classificacao", "value"),
@@ -1510,7 +1503,6 @@ def sugerir_prioridade_ao_digitar_dn(data_nascimento):
     ], color=cor, className="mt-2")
     
     return alerta, classificacao_sugerida
-
 
 @callback(
     Output("feedback-adicionar-paciente", "children"),
@@ -1556,7 +1548,6 @@ def adicionar_paciente_fila(n_clicks, nome, data_nascimento, fila_id, classifica
     ], color="success")
     
     return alert, "", "", {"timestamp": datetime.now().isoformat()}
-
 
 # ==================== TAB: CHAMAR PACIENTES ====================
 
@@ -1608,7 +1599,6 @@ def render_chamar_pacientes():
         filas_cards.append(card)
     
     return html.Div(filas_cards)
-
 
 def criar_lista_aguardando_admin(fila_id: str):
     """Lista aguardando no admin com limite de 20 visíveis"""
@@ -1678,7 +1668,6 @@ def criar_lista_aguardando_admin(fila_id: str):
         alerta,
         dbc.ListGroup(items)
     ])
-
 
 def criar_lista_chamados_admin(fila_id: str):
     """Lista chamados no admin com limite de 5 visíveis"""
@@ -1752,7 +1741,6 @@ def criar_lista_chamados_admin(fila_id: str):
         dbc.ListGroup(items)
     ])
 
-
 @callback(
     Output("store-update-chamar", "data"),
     Input({"type": "btn-chamar", "index": ALL}, "n_clicks"),
@@ -1819,7 +1807,6 @@ def processar_acao_paciente(chamar_clicks, atendido_clicks, remover_clicks):
         "acao": ctx.triggered_id["type"]
     }
 
-
 @callback(
     Output({"type": "fila-aguardando", "index": ALL}, "children"),
     Output({"type": "fila-chamados", "index": ALL}, "children"),
@@ -1849,7 +1836,6 @@ def atualizar_listas_chamar_sem_atendidos(update_data, active_tab, fila_ids):
     return aguardando_outputs, chamados_outputs
     # ✅ REMOVIDO: , atendidos_outputs
 
-
 # ==================== ROTEAMENTO ====================
 
 @callback(
@@ -1867,7 +1853,6 @@ def display_page(pathname, autenticado):
             return layout_login()
     else:
         return layout_publico()
-
 
 # ==================== CSS DINÂMICO ====================
 
@@ -1944,15 +1929,9 @@ app.index_string = '''
 </html>
 '''
 
-
 # ==================== EXECUÇÃO ====================
 
 if __name__ == '__main__':
-    if not os.path.exists("assets"):
-        os.makedirs("assets")
-        print("⚠️  ATENÇÃO: Coloque o arquivo 'som.mp3' na pasta 'assets/'")
-        print("⚠️  ATENÇÃO: Coloque o arquivo 'logo.jpg' na pasta 'assets/'")
-    
     print("🔄 Verificando dados antigos...")
     migrar_dados_antigos()
     
@@ -1960,13 +1939,13 @@ if __name__ == '__main__':
     print("🔐 SENHA DO ADMIN: 6105/*")
     print("📁 ARQUIVOS NECESSÁRIOS:")
     print("   - assets/som.mp3 (arquivo de som para chamadas)")
-    print("   - assets/logo.jpg (logo da empresa)")
+    print("   - assets/logo.png (logo da empresa)")
     print("="*50 + "\n")
     
+    # ✅ CONFIGURAÇÃO PARA LIGHTSAIL
     app.run(
-        debug=True,
-        host='0.0.0.0',
-        port=8053
-
+        debug=False,          # ✅ Desabilitar debug em produção
+        host='0.0.0.0',       # ✅ Aceitar conexões de qualquer IP
+        port=8053,            # ✅ Porta especificada
+        threaded=True         # ✅ Suporte a múltiplas conexões
     )
-
