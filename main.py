@@ -1308,7 +1308,8 @@ def criar_fila(n_clicks, nome):
         return dbc.Alert("Digite um nome para a fila", color="warning"), dash.no_update, dash.no_update
     
     dados = carregar_dados()
-    fila_id = f"fila{len(dados['filas']) + 1}"
+    timestamp_ms = int(datetime.now().timestamp() * 1000)
+    fila_id = f"fila_{timestamp_ms}"
     
     dados["filas"][fila_id] = {
         "id": fila_id,
@@ -1951,3 +1952,4 @@ if __name__ == '__main__':
         threaded=True,
         use_reloader=False
     )
+
