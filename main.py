@@ -46,7 +46,7 @@ app.server.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'fila-management-
 
 DATA_FILE = os.path.join(DATA_DIR, "fila_data.json")
 REFRESH_INTERVAL = 3000  # 3 segundos
-CAROUSEL_INTERVAL = 10000  # 10 segundos
+CAROUSEL_INTERVAL = 20000  # 10 segundos
 MAX_FILAS_POR_TELA = 3
 MODAL_DURATION = 8000  # 8 segundos
 SENHA_ADMIN = "6105/*"  # ⚠️ ALTERE ESTA SENHA EM PRODUÇÃO
@@ -861,7 +861,7 @@ def atualizar_filas_publico(n, current_page):
     for fila in filas_visiveis:
         # APLICAR LIMITES: 12 aguardando, 5 chamados
         aguardando = obter_pacientes_por_status(fila["id"], "aguardando")[:12]  # ✅ LIMITE 12
-        chamados = obter_pacientes_por_status(fila["id"], "chamado")[:5]        # ✅ LIMITE 5
+        chamados = obter_pacientes_por_status(fila["id"], "chamado")[:1]        # ✅ LIMITE 5
         
         # Contar totais para exibir
         total_aguardando = len(obter_pacientes_por_status(fila["id"], "aguardando"))
@@ -1952,4 +1952,5 @@ if __name__ == '__main__':
         threaded=True,
         use_reloader=False
     )
+
 
