@@ -919,7 +919,7 @@ def atualizar_filas_publico(n, current_page):
                         
                         html.Div([
                             dbc.Alert(
-                                f"⚠️ Mostrando 5 de {total_chamados} pacientes",
+                                f"⚠️ Mostrando 1 de {total_chamados} pacientes",
                                 color="info",
                                 className="py-2 mb-2 small"
                             ) if total_chamados > 5 else None,
@@ -1683,7 +1683,7 @@ def criar_lista_chamados_admin(fila_id: str):
     alerta = None
     if total_pacientes > 5:
         alerta = dbc.Alert(
-            f"⚠️ Mostrando 5 de {total_pacientes} pacientes chamados.",
+            f"⚠️ Mostrando 1 de {total_pacientes} pacientes chamados.",
             color="info",
             className="mb-3"
         )
@@ -1952,5 +1952,6 @@ if __name__ == '__main__':
         threaded=True,
         use_reloader=False
     )
+
 
 
